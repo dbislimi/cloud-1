@@ -1,7 +1,10 @@
 TF_DIR = ./srcs/terraform
 
-tf-on:
-	$(MAKE) -C $(TF_DIR) on
+tf-init:
+	$(MAKE) -C $(TF_DIR) init
+
+tf-apply:
+	$(MAKE) -C $(TF_DIR) apply
 
 tf-off:
 	$(MAKE) -C $(TF_DIR) off

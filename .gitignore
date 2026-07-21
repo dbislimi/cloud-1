@@ -1,5 +1,5 @@
 # Local .terraform directories
-.terraform*
+.terraform
 
 # .tfstate files
 *.tfstate
@@ -48,3 +48,5 @@ terraform.rc
 
 # Retry files generated for failed Ansible playbook runs
 *.retry
+
+inventory.ini

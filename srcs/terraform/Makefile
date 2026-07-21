@@ -1,7 +1,7 @@
 init: fmt
 	terraform init
 
-on: init
+apply: init
 	terraform apply
 
 off:

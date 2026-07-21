@@ -5,6 +5,10 @@ terraform {
       version = "7.40.0"
     }
   }
+  backend "gcs" {
+    bucket = "cloud1-tfstate-dren42"
+    prefix = "terraform/state"
+  }
 }
 
 resource "google_compute_instance" "web_server" {
@@ -58,12 +62,13 @@ resource "google_compute_instance" "db_server" {
 
 resource "terraform_data" "ansible_inventory" {
   triggers_replace = [
-    local.web_public_ip,
-    local.db_private_ip
+    google_compute_instance.web_server.id,
+    google_compute_instance.db_server.id
   ]
 
   provisioner "local-exec" {
     command = <<-EOT
+			mkdir -p ${path.module}/../ansible &&
 			cat <<EOF > ${path.module}/../ansible/inventory.ini
 			[web]
 			${local.web_public_ip}
