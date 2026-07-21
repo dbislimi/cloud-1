@@ -12,6 +12,7 @@ resource "google_compute_firewall" "allow_external" {
   }
 
   source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["web"]
 }
 
 resource "google_compute_firewall" "allow_internal" {
@@ -20,7 +21,9 @@ resource "google_compute_firewall" "allow_internal" {
 
   allow {
     protocol = "tcp"
+    ports    = ["22", "3306"]
   }
 
-  source_ranges = ["10.0.0.0/8"]
+  source_tags = ["web"]
+  target_tags = ["db"]
 }

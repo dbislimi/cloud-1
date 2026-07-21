@@ -15,6 +15,7 @@ resource "google_compute_instance" "web_server" {
   metadata = {
     ssh-keys = "${var.gcp_user}:${file(var.ssh_pub_path)}"
   }
+  tags = ["web"]
 
   boot_disk {
     initialize_params {
@@ -39,6 +40,7 @@ resource "google_compute_instance" "db_server" {
   metadata = {
     ssh-keys = "${var.gcp_user}:${file(var.ssh_pub_path)}"
   }
+  tags = ["db"]
 
   boot_disk {
     initialize_params {
