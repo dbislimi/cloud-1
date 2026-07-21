@@ -1,0 +1,74 @@
+services:
+    mariadb:
+        build: requirements/mariadb
+        container_name: mariadb
+        env_file:
+            - .env
+        expose:
+            - "3306"
+        networks:
+            - inception
+        volumes:
+            - db:/var/lib/mysql
+        healthcheck:
+            test: mysqladmin ping --silent && mysql -u"$DB_USER" -p"$DB_PASSWD" -e "USE $DB_NAME;"
+            interval: 1s
+            timeout: 5s
+            retries: 20
+            start_period: 2s
+        restart: unless-stopped
+    wordpress:
+        build: requirements/wordpress
+        container_name: wordpress
+        env_file:
+            - .env
+        expose:
+            - "9000"
+        networks:
+            - inception
+        volumes:
+            - wp:/var/www/html
+        depends_on:
+            mariadb:
+                condition: service_healthy
+                restart: true
+        healthcheck:
+            test: ["CMD-SHELL", "cd /var/www/html && wp core is-installed --allow-root"]
+            interval: 2s
+            timeout: 5s
+            retries: 20
+            start_period: 2s
+        restart: always
+    nginx:
+        build: requirements/nginx
+        container_name: nginx
+        ports:
+            - "443:443"
+        networks:
+            - inception
+        volumes:
+            - wp:/var/www/html
+        depends_on:
+            wordpress:
+                condition: service_healthy
+        restart: always
+
+volumes:
+    wp:
+        driver: local
+        driver_opts:
+            type: "none"
+            o: "bind"
+            device: "/home/$USER/data/wp/"
+    db:
+        driver: local
+        driver_opts:
+            type: "none"
+            o: "bind"
+            device: "/home/$USER/data/db/"
+
+networks:
+    inception:
+        driver: bridge
+
+        
