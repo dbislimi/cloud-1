@@ -23,7 +23,7 @@ variable "ssh_priv_path" {
 }
 
 locals {
-  web_public_ip  = google_compute_instance.web_server.network_interface[0].access_config[0].nat_ip
+  web_public_ip  = google_compute_address.web_static_ip.address
   web_private_ip = google_compute_instance.web_server.network_interface[0].network_ip
-  db_private_ip  = google_compute_instance.db_server.network_interface[0].network_ip
+  db_private_ip  = google_compute_address.db_internal_ip.address
 }

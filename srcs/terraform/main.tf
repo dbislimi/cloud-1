@@ -11,6 +11,10 @@ terraform {
   }
 }
 
+resource "google_compute_address" "web_static_ip" {
+  name = "cloud1-web-static-ip"
+}
+
 resource "google_compute_instance" "web_server" {
   name           = "cloud1-web-01"
   machine_type   = "e2-micro"
@@ -32,8 +36,16 @@ resource "google_compute_instance" "web_server" {
   network_interface {
     network = google_compute_network.vpc_network.name
     access_config {
+      nat_ip = google_compute_address.web_static_ip.address
     }
   }
+}
+
+resource "google_compute_address" "db_internal_ip" {
+  name         = "cloud1-db-internal-ip"
+  address_type = "INTERNAL"
+  region       = "us-east1"
+  subnetwork      = google_compute_network.vpc_network.id
 }
 
 resource "google_compute_instance" "db_server" {
@@ -55,21 +67,16 @@ resource "google_compute_instance" "db_server" {
   }
 
   network_interface {
-    network = google_compute_network.vpc_network.name
+    network    = google_compute_network.vpc_network.name
+    network_ip = google_compute_address.db_internal_ip.address
   }
 
 }
 
-resource "terraform_data" "ansible_inventory" {
-  triggers_replace = [
-    google_compute_instance.web_server.id,
-    google_compute_instance.db_server.id
-  ]
+resource "local_file" "ansible_inventory" {
+  filename = "${path.module}/../ansible/inventory.ini"
 
-  provisioner "local-exec" {
-    command = <<-EOT
-			mkdir -p ${path.module}/../ansible &&
-			cat <<EOF > ${path.module}/../ansible/inventory.ini
+  content = <<-EOT
 			[web]
 			${local.web_public_ip}
 
@@ -83,8 +90,6 @@ resource "terraform_data" "ansible_inventory" {
 			
 			[db:vars]
 			ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyJump=dren@${local.web_public_ip}'
-
-			EOF
 		EOT
-  }
+
 }
