@@ -12,6 +12,14 @@ variable "gcp_user" {
   type = string
 }
 
+variable "gcp_region" {
+  type = string
+}
+
+variable "gcp_zones" {
+  type = list(string)
+}
+
 variable "ssh_pub_path" {
   type    = string
   default = "~/.ssh/id_rsa.pub"

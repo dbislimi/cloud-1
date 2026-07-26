@@ -1,0 +1,57 @@
+---
+- name: Install Docker
+  hosts: all
+  become: true
+
+  vars:
+    docker_apt_arch: amd64
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Create the keyrings folder
+      file:
+        path: /etc/apt/keyrings
+        state: "directory"
+        mode: "0755"
+
+    - name: Download the GPG key.
+      get_url:
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker's official repo
+      deb822_repository:
+        name: docker
+        types: deb
+        uris: ["https://download.docker.com/linux/{{ ansible_distribution | lower }}"]
+        suites: "{{ ansible_distribution_release }}"
+        components: stable
+        architectures: "{{ docker_apt_arch }}"
+        signed_by: /etc/apt/keyrings/docker.asc
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker service is started and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
