@@ -1,0 +1,38 @@
+server {
+
+	listen 80 default_server;
+	listen [::]:80 default_server;
+	server_name {{ DOMAIN_NAME }};
+
+	root /var/www/html;
+	index index.php index.html;
+
+	location /healthz {
+		access_log off;
+		add_header Content-Type text/plain;
+		return 200 "Healthy\n";
+	}
+
+	location / {
+		try_files $uri $uri/ /index.php?$args;
+	}
+
+	# pass PHP scripts to FastCGI server
+
+	location ~ \.php$ {
+		fastcgi_split_path_info ^(.+\.php)(/.+)$;
+		fastcgi_pass wordpress:9000;
+		fastcgi_index index.php;
+		include fastcgi_params;
+		fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+	}
+
+	location /phpmyadmin {
+		proxy_pass http://phpmyadmin:80;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	}
+}
+

@@ -1,0 +1,78 @@
+---
+  - name: Format the persistent disk as ext4
+    community.general.filesystem:
+      fstype: ext4
+      dev: /dev/disk/by-id/google-data-mariadb
+
+  - name: Create the db folder
+    file:
+      path: /opt/data/db
+      state: 'directory'
+      mode: '0755'
+
+  - name: Mount the persistent disk
+    ansible.posix.mount:
+      path: /opt/data/db
+      src: /dev/disk/by-id/google-data-mariadb
+      fstype: ext4
+      state: mounted
+
+  - name: Deployment of the workspace
+    block:
+      - name: Create secure workspace for mariadb
+        file:
+          path: "{{ item }}"
+          state: "directory"
+          mode: '0750'
+        loop:
+          - /opt/mariadb_cloud
+          - /opt/mariadb_cloud/mariadb
+
+      - name: Template init script
+        template:
+          src: init.sql.j2
+          dest: /opt/mariadb_cloud/mariadb/init.sql
+          owner: '999'
+          group: '999'
+          mode: '0400'
+
+      - name: Copy db docker-compose
+        copy:
+          src: docker-compose-db.yml
+          dest: /opt/mariadb_cloud/docker-compose.yml
+          mode: '0640'
+
+      - name: Template .env
+        template:
+          src: .env.j2
+          dest: /opt/mariadb_cloud/.env
+          mode: '0600'
+
+    module_defaults:
+      file:
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+      copy:
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+      template:
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+  - name: Start mariadb via docker-compose
+    community.docker.docker_compose_v2:
+      project_src: /opt/mariadb_cloud
+      state: present
+    register: docker_output
+
+  - name: Healthcheck MariaDB
+    command: >
+      {% raw %}docker inspect --format='{{ .State.Health.Status }}' mariadb_server{% endraw %}
+    register: db_status
+    changed_when: false
+    retries: 10
+    delay: 5
+    until: db_status.stdout == "healthy"
+
+
+

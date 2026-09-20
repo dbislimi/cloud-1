@@ -1,0 +1,32 @@
+services:
+    mariadb:
+        image: mariadb:12.3.3-noble
+        container_name: mariadb_server
+        env_file:
+            - .env
+        networks:
+            - inception
+        volumes:
+            - db:/var/lib/mysql
+            - ./mariadb/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+        ports:
+          - "3306:3306"
+        restart: unless-stopped
+        healthcheck:
+          test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+          start_period: 30s
+
+volumes:
+  db:
+    driver: local
+    driver_opts:
+        type: none
+        o: bind
+        device: /opt/data/db
+
+networks:
+    inception:
+        driver: bridge

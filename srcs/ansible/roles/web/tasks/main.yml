@@ -1,0 +1,42 @@
+---
+- name: Create secure Workspace for web
+  file:
+    path: /opt/web_cloud
+    state: 'directory'
+    mode: '0750'
+    group: "{{ ansible_user }}"
+
+- name: Template .env
+  template:
+    src: .env.j2
+    dest: /opt/web_cloud/.env
+    mode: '0400'
+
+- name: Template conf file
+  template:
+    src: dbislimi.42.fr.conf.j2
+    dest: /opt/web_cloud/nginx.conf
+    mode: '0640'
+    group: "{{ ansible_user }}"
+
+
+- name: Copy docker compose
+  copy:
+    src: docker-compose-web.yml
+    dest: /opt/web_cloud/docker-compose.yml
+    mode: '0640'
+
+- name: Start web via docker-compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/web_cloud
+    state: present
+  register: docker_output
+
+- name: Healthcheck - Wait for web server to be ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 5
+  delay: 10

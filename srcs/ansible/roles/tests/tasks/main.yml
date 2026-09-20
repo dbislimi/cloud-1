@@ -1,0 +1,13 @@
+---
+  - name: 'Healthcheck E2E: verify public access via loadbalancer'
+    ansible.builtin.uri:
+      url: "http://{{ lb_public_ip }}/healthz"
+      # headers:
+      #     Host: "{{ DOMAIN_NAME }}"
+      status_code: 200
+      validate_certs: false
+      return_content: no
+    register: e2e_status
+    until: e2e_status.status == 200
+    retries: 5
+    delay: 10

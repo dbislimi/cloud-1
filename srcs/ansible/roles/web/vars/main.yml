@@ -1,0 +1,3 @@
+---
+TEMPLATE_DB_HOST: "{{ hostvars[groups['db'][0]]['private_ip'] }}"
+TEMPLATE_DB_USER: "{{ ansible_user }}"
