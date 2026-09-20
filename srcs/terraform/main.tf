@@ -1,95 +1,60 @@
-terraform {
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "7.40.0"
-    }
-  }
-  backend "gcs" {
-    bucket = "cloud1-tfstate-dren42"
-    prefix = "terraform/state"
-  }
+data "google_compute_zones" "available" {
+  region = var.gcp_region
 }
 
-resource "google_compute_address" "web_static_ip" {
-  name   = "cloud1-web-static-ip"
-  region = google_compute_subnetwork.web_subnet.region
+locals {
+  gcp_zones = data.google_compute_zones.available.names
 }
 
-resource "google_compute_instance" "web_server" {
-  name           = "cloud1-web-01"
-  machine_type   = "e2-micro"
-  zone           = var.gcp_zones[1]
-  desired_status = var.desired_status
-  metadata = {
-    ssh-keys = "${var.gcp_user}:${file(var.ssh_pub_path)}"
-  }
-  tags = ["web"]
+module "network" {
+  source = "./modules/network"
 
-  boot_disk {
-    initialize_params {
-      image = "debian-cloud/debian-12"
-      type  = "pd-standard"
-      size  = 10
-    }
-  }
-
-  network_interface {
-    subnetwork = google_compute_subnetwork.web_subnet.id
-    access_config {
-      nat_ip = google_compute_address.web_static_ip.address
-    }
-  }
+  gcp_project_id = var.gcp_project_id
+  gcp_region     = var.gcp_region
 }
 
-resource "google_compute_address" "db_internal_ip" {
-  name         = "cloud1-db-internal-ip"
-  address_type = "INTERNAL"
-  region       = google_compute_subnetwork.db_subnet.region
-  subnetwork   = google_compute_subnetwork.db_subnet.id
+module "compute" {
+  source = "./modules/compute"
+
+  gcp_project_id = var.gcp_project_id
+  gcp_region     = var.gcp_region
+  web_subnet_id  = module.network.web_subnet_id
+  db_subnet_id   = module.network.db_subnet_id
+
+  gcp_zones         = local.gcp_zones
+  gcp_machine_types = var.gcp_machine_types
+  gcp_user          = var.gcp_user
+  ssh_pub_path      = var.ssh_pub_path
+  ssh_priv_path     = var.ssh_priv_path
 }
 
-resource "google_compute_instance" "db_server" {
-  name           = "cloud1-db-01"
-  machine_type   = "e2-micro"
-  zone           = var.gcp_zones[0]
-  desired_status = var.desired_status
-  metadata = {
-    ssh-keys = "${var.gcp_user}:${file(var.ssh_pub_path)}"
-  }
-  tags = ["db"]
+module "loadbalancer" {
+  source = "./modules/loadbalancer"
 
-  boot_disk {
-    initialize_params {
-      image = "debian-cloud/debian-12"
-      type  = "pd-standard"
-      size  = 10
-    }
-  }
-
-  network_interface {
-    subnetwork = google_compute_subnetwork.db_subnet.id
-    network_ip = google_compute_address.db_internal_ip.address
-  }
-
+  gcp_project_id  = var.gcp_project_id
+  web_server_id   = module.compute.web_server_id
+  web_server_zone = module.compute.web_server_zone
 }
 
 resource "local_file" "ansible_inventory" {
   filename = "${path.module}/../ansible/hosts.ini"
 
   content = <<-EOT
-			[web]
-			${local.web_public_ip}
+    [web]
+    ${module.compute.web_server_name} private_ip=${module.compute.web_private_ip}
 
-			[db]
-			${local.db_private_ip}
+    [db]
+    ${module.compute.db_server_name} private_ip=${module.compute.db_private_ip}
 
-			[all:vars]
-			ansible_user=${var.gcp_user}
-			ansible_ssh_private_key_file=${var.ssh_priv_path}
-			
-			[db:vars]
-			ansible_ssh_common_args='-o ProxyJump=dren@${local.web_public_ip}'
-		EOT
+    [all:vars]
+    ansible_user=${var.gcp_user}
+    ansible_ssh_private_key_file=${var.ssh_priv_path}
+    lb_public_ip=${module.loadbalancer.lb_public_ip}
+    
+    [web:vars]
+    ansible_ssh_common_args='-o ProxyCommand="gcloud compute start-iap-tunnel %h %p --listen-on-stdin --project=${var.gcp_project_id} --zone=${module.compute.web_server_zone}"'
 
+    [db:vars]
+    ansible_ssh_common_args='-o ProxyCommand="gcloud compute start-iap-tunnel %h %p --listen-on-stdin --project=${var.gcp_project_id} --zone=${module.compute.db_server_zone}"'
+  EOT
 }

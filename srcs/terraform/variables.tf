@@ -1,37 +1,31 @@
-variable "desired_status" {
-  type    = string
-  default = "RUNNING"
-  # to close: TERMINATED
-}
-
-variable "gcp_project" {
-  type = string
-}
-
-variable "gcp_user" {
-  type = string
+variable "gcp_project_id" {
+  description = "GCP Project ID"
+  type        = string
 }
 
 variable "gcp_region" {
-  type = string
+  description = "GCP region"
+  type        = string
 }
 
-variable "gcp_zones" {
-  type = list(string)
+variable "gcp_user" {
+  description = "SSH username"
+  type        = string
+}
+
+variable "gcp_machine_types" {
+  description = "Machine types list"
+  type        = list(string)
 }
 
 variable "ssh_pub_path" {
-  type    = string
-  default = "~/.ssh/id_rsa.pub"
+  description = "SSH public key path"
+  type        = string
+  default     = "~/.ssh/id_rsa.pub"
 }
 
 variable "ssh_priv_path" {
-  type    = string
-  default = "~/.ssh/id_rsa"
-}
-
-locals {
-  web_public_ip  = google_compute_address.web_static_ip.address
-  web_private_ip = google_compute_instance.web_server.network_interface[0].network_ip
-  db_private_ip  = google_compute_address.db_internal_ip.address
+  description = "SSH private key path"
+  type        = string
+  default     = "~/.ssh/id_rsa"
 }

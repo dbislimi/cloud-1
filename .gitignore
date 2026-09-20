@@ -50,3 +50,6 @@ terraform.rc
 *.retry
 
 inventory.ini
+
+.env
+.vault_password
