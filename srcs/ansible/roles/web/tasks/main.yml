@@ -1,4 +1,10 @@
 ---
+- name: Install NFS client
+  apt:
+    name: nfs-common
+    state: present
+    update_cache: yes
+
 - name: Create secure Workspace for web
   file:
     path: /opt/web_cloud
@@ -18,25 +24,90 @@
     dest: /opt/web_cloud/nginx.conf
     mode: '0640'
     group: "{{ ansible_user }}"
+  register: nginx_conf
 
 
 - name: Copy docker compose
   copy:
-    src: docker-compose-web.yml
+    src: docker-compose.yml
     dest: /opt/web_cloud/docker-compose.yml
     mode: '0640'
 
-- name: Start web via docker-compose
-  community.docker.docker_compose_v2:
-    project_src: /opt/web_cloud
-    state: present
-  register: docker_output
+- name: Copy php-fpm Healthcheck config
+  copy:
+    src: php-fpm-healthcheck.conf
+    dest: /opt/web_cloud/php-fpm-healthcheck.conf
+    mode: '0644'
 
-- name: Healthcheck - Wait for web server to be ready
-  ansible.builtin.uri:
-    url: "http://127.0.0.1"
-    status_code: 200
-  register: result
-  until: result.status == 200
-  retries: 5
-  delay: 10
+- name: Start web stack one server at a time
+  throttle: 1
+  block:
+  - name: Start web via docker-compose
+    community.docker.docker_compose_v2:
+      project_src: /opt/web_cloud
+      state: present
+    register: docker_output
+
+  - name: Restart nginx to load its config and re-resolve upstreams
+    community.docker.docker_compose_v2:
+      project_src: /opt/web_cloud
+      services:
+        - nginx
+      state: restarted
+    when: nginx_conf is changed or docker_output is changed
+
+  - name: Healthcheck - Wait for web server to be ready
+    uri:
+      url: "http://127.0.0.1"
+      status_code: 200
+    register: result
+    until: result.status == 200
+    retries: 5
+    delay: 10
+
+- name: Bootstrap WordPress (shared DB/content - run once for the whole cluster)
+  run_once: true
+  vars:
+    wp_cli_run: >-
+      docker run --rm
+      --env-file /opt/web_cloud/.env
+      --volumes-from wordpress_app
+      --network container:wordpress_app
+      wordpress:cli-php8.5
+  block:
+  - name: Check if WordPress is already installed
+    command:
+      cmd: "{{ wp_cli_run }} wp core is-installed --allow-root"
+    register: wp_installed
+    failed_when: false
+    changed_when: false
+
+  - name: Run WordPress installer
+    command:
+      cmd: >
+        {{ wp_cli_run }} wp core install
+        --url=https://{{ DOMAIN_NAME }}
+        --title={{ WP_TITLE | quote }}
+        --admin_user={{ WP_ADMIN_USER }}
+        --admin_password={{ WP_ADMIN_PASSWORD }}
+        --admin_email={{ WP_ADMIN_EMAIL }}
+        --allow-root
+    when: wp_installed.rc != 0
+    no_log: true
+
+  - name: Check if the secondary WordPress user exists
+    command:
+      cmd: "{{ wp_cli_run }} wp user get {{ WP_USER_NAME }} --allow-root"
+    register: wp_user_exists
+    failed_when: false
+    changed_when: false
+
+  - name: Create the secondary WordPress user
+    command:
+      cmd: >
+        {{ wp_cli_run }} wp user create {{ WP_USER_NAME }} {{ WP_USER_EMAIL }}
+        --role=editor
+        --user_pass={{ WP_USER_PASSWORD }}
+        --allow-root
+    when: wp_user_exists.rc != 0
+    no_log: true

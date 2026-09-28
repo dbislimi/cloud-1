@@ -24,6 +24,7 @@ services:
       - .env
     volumes:
       - wordpress_data:/var/www/html
+      - ./php-fpm-healthcheck.conf:/usr/local/etc/php-fpm.d/zz-healthcheck.conf:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 9000 || exit 1"]
@@ -37,7 +38,7 @@ services:
     env_file:
       - .env
     environment:
-      - PMA_HOST=${DB_HOST}
+      - PMA_HOST=${WORDPRESS_DB_HOST}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
@@ -48,3 +49,8 @@ services:
 
 volumes:
   wordpress_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=${WORDPRESS_DB_HOST},nfsvers=4.2,rw,hard"
+      device: ":/opt/data/wordpress"

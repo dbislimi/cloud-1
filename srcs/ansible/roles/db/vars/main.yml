@@ -1,3 +1,2 @@
 ---
 TEMPLATE_DB_USER: "{{ ansible_user }}"
-TEMPLATE_WP_HOST: "{{ hostvars[groups['web'][0]]['private_ip'] }}"

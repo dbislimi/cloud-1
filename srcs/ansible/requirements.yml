@@ -1,0 +1,13 @@
+---
+# Collections used by the roles, not shipped with ansible-core alone.
+# Install: ansible-galaxy collection install -r requirements.yml
+collections:
+  # docker_compose_v2 (roles db, web) needs >= 3.6.0
+  - name: community.docker
+    version: ">=3.6.0,<4.0.0"
+  # filesystem (role db)
+  - name: community.general
+    version: ">=9.0.0,<10.0.0"
+  # mount (role db)
+  - name: ansible.posix
+    version: ">=1.5.0,<2.0.0"

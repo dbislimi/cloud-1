@@ -1,3 +1,8 @@
+map $http_x_forwarded_proto $fastcgi_https {
+	default "";
+	https   on;
+}
+
 server {
 
 	listen 80 default_server;
@@ -6,30 +11,31 @@ server {
 
 	root /var/www/html;
 	index index.php index.html;
+	add_header X-Served-By {{ inventory_hostname }} always;
 
-	location /healthz {
+	absolute_redirect off;
+
+	location = /healthz {
 		access_log off;
-		add_header Content-Type text/plain;
-		return 200 "Healthy\n";
+		include fastcgi.conf;
+		fastcgi_pass wordpress:9000;
 	}
 
 	location / {
 		try_files $uri $uri/ /index.php?$args;
 	}
 
-	# pass PHP scripts to FastCGI server
-
 	location ~ \.php$ {
 		fastcgi_split_path_info ^(.+\.php)(/.+)$;
 		fastcgi_pass wordpress:9000;
 		fastcgi_index index.php;
-		include fastcgi_params;
-		fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+		include fastcgi.conf;
         fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_param HTTPS $fastcgi_https;
 	}
 
-	location /phpmyadmin {
-		proxy_pass http://phpmyadmin:80;
+	location ^~ /phpmyadmin/ {
+		proxy_pass http://phpmyadmin:80/;
 		proxy_set_header Host $host;
 		proxy_set_header X-Real-IP $remote_addr;
 		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

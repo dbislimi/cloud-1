@@ -1,0 +1,37 @@
+---
+  - name: Format the Wordpress disk as ext4
+    community.general.filesystem:
+      fstype: ext4
+      dev: /dev/disk/by-id/google-data-wordpress
+
+  - name: Mount the Wordpress disk
+    ansible.posix.mount:
+      path: /opt/data/wordpress
+      src: /dev/disk/by-id/google-data-wordpress
+      fstype: ext4
+      state: mounted
+
+  - name: Install NFS server
+    apt:
+      name: nfs-kernel-server
+      state: present
+      update_cache: yes
+
+  - name: Create the exports.d folder
+    file:
+      path: /etc/exports.d
+      state: directory
+      mode: '0755'
+
+  - name: Export Wordpress files to the web subnet
+    copy:
+      dest: /etc/exports.d/wordpress.exports
+      content: "/opt/data/wordpress {{ web_subnet_cidr }}(rw,sync,no_subtree_check,no_root_squash)\n"
+      mode: '0644'
+    notify: Reload NFS exports
+
+  - name: Ensure NFS server starts at boot
+    systemd:
+      name: nfs-server
+      state: started
+      enabled: yes
