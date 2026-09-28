@@ -29,3 +29,19 @@ variable "ssh_priv_path" {
   type        = string
   default     = "~/.ssh/id_rsa"
 }
+
+variable "web_count" {
+  description = "Number of web servers behind the loadbalancer"
+  type        = number
+  default     = 1
+}
+
+variable "desired_status" {
+  description = "Desired machine status (RUNNING or TERMINATED)"
+  type        = string
+  default     = "RUNNING"
+}
+
+variable "domain_name" {
+  type = string
+}

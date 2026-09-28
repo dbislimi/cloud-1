@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/google"
       version = "7.40.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "4.4.1"
+    }
   }
   backend "gcs" {
     bucket = "cloud1-tfstate-dren42"

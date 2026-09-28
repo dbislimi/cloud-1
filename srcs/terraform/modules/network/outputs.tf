@@ -22,3 +22,8 @@ output "nat_public_ip" {
   description = "Public static ip for NAT network exit"
   value       = google_compute_address.nat_static_ip.address
 }
+
+output "web_subnet_cidr" {
+  description = "CIDR range of web subnet"
+  value       = google_compute_subnetwork.web_subnet.ip_cidr_range
+}

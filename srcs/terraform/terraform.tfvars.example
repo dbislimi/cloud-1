@@ -1,0 +1,11 @@
+gcp_project_id    = "my-gcp-project-id"
+gcp_user          = "my-ssh-user"
+gcp_region        = "europe-west8"
+gcp_machine_types = ["e2-micro", "e2-small", "e2-medium"]
+web_count         = 2
+
+domain_name = "my-subdomain.duckdns.org"
+
+# Optionnel : défauts définis dans variables.tf
+# ssh_pub_path  = "~/.ssh/id_rsa.pub"
+# ssh_priv_path = "~/.ssh/id_rsa"

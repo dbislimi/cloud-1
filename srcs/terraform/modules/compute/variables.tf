@@ -48,3 +48,9 @@ variable "ssh_priv_path" {
   description = "SSH private key path"
   type        = string
 }
+
+variable "web_count" {
+  description = "Number of identical web servers behind the load balancer"
+  type        = number
+  default     = 1
+}

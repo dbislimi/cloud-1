@@ -26,10 +26,6 @@ resource "google_compute_router" "router" {
 resource "google_compute_address" "nat_static_ip" {
   name   = "${var.gcp_project_id}-nat-static-ip"
   region = var.gcp_region
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 resource "google_compute_router_nat" "nat" {
@@ -57,7 +53,7 @@ resource "google_compute_firewall" "allow_internal" {
 
   allow {
     protocol = "tcp"
-    ports    = ["3306"]
+    ports    = ["3306", "2049"]
   }
 
   source_ranges = [google_compute_subnetwork.web_subnet.ip_cidr_range]
@@ -77,8 +73,8 @@ resource "google_compute_firewall" "allow_ssh_iap" {
   target_tags   = ["web", "db"]
 }
 
-resource "google_compute_firewall" "allow_health_check" {
-  name    = "${var.gcp_project_id}-allow-hc"
+resource "google_compute_firewall" "allow_lb" {
+  name    = "${var.gcp_project_id}-allow-lb"
   network = google_compute_network.vpc_network.name
 
   allow {

@@ -3,12 +3,14 @@ variable "gcp_project_id" {
   type        = string
 }
 
-variable "web_server_id" {
-  description = "Web server ID"
-  type        = string
+variable "web_servers" {
+  description = "Web servers self_links and zones"
+  type = list(object({
+    self_link = string
+    zone      = string
+  }))
 }
 
-variable "web_server_zone" {
-  description = "Web server zone"
-  type        = string
+variable "domain_name" {
+  type = string
 }
